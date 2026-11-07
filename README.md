@@ -21,8 +21,10 @@ the pill is only rendered once a state exists.
 ## Install
 
 ```bash
-# 1. put the package where the profile can resolve it
-ln -s /path/to/pr-badge ~/.dsh/profiles/web/node_modules/@dsh-plugins/pr-badge
+# 1. install the package into the profile
+dsh plugin --profile web add "git+https://github.com/tribesman/dsh-pr-badge.git"
+# or from a checkout, for development (symlink, no copy)
+ln -s /path/to/dsh-pr-badge ~/.dsh/profiles/web/node_modules/@dsh-plugins/pr-badge
 
 # 2. add one Loader row to the profile patch layer
 #    ~/.dsh/profiles/web/cordis.patch.yml
