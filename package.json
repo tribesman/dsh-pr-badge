@@ -1,0 +1,40 @@
+{
+	"name": "@dsh-plugins/pr-badge",
+	"version": "0.2.0",
+	"description": "DSH web plugin: a pull-request badge on each Session row, resolved from the Session's own branch with the operator's gh login",
+	"keywords": [
+		"dsh-plugin",
+		"deepseek-harness",
+		"deepseek",
+		"cordis",
+		"pull-request",
+		"sessions",
+		"web"
+	],
+	"license": "MIT",
+	"type": "module",
+	"main": "./lib/index.js",
+	"exports": {
+		".": "./lib/index.js",
+		"./client": "./lib/client.js",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"lib",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"test": "node --test test/*.test.mjs",
+		"check": "node --check lib/index.js && node --check lib/client.js"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"dsh": {
+		"client": {
+			"platform": "web",
+			"inject": []
+		}
+	}
+}
