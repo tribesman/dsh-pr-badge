@@ -1,17 +1,31 @@
 {
 	"name": "@dsh-plugins/pr-badge",
-	"version": "0.2.0",
-	"description": "DSH web plugin: a pull-request badge on each Session row, resolved from the Session's own branch with the operator's gh login",
+	"version": "0.3.0",
+	"description": "DSH web plugin: GitHub's pull-request octicon in every sidebar session row, colored by PR state (green open, orange blocked, purple merged), click-through to the right pull or merge request",
 	"keywords": [
 		"dsh-plugin",
 		"deepseek-harness",
 		"deepseek",
 		"cordis",
+		"git",
+		"github",
+		"gitlab",
 		"pull-request",
-		"sessions",
-		"web"
+		"sidebar"
 	],
+	"homepage": "https://github.com/tribesman/dsh-pr-badge#readme",
+	"bugs": {
+		"url": "https://github.com/tribesman/dsh-pr-badge/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tribesman/dsh-pr-badge.git"
+	},
 	"license": "MIT",
+	"author": {
+		"name": "tribesman",
+		"url": "https://github.com/tribesman"
+	},
 	"type": "module",
 	"main": "./lib/index.js",
 	"exports": {
@@ -25,7 +39,7 @@
 		"LICENSE"
 	],
 	"scripts": {
-		"test": "node --test test/*.test.mjs",
+		"test": "node test/run.mjs && node test/client-check.mjs",
 		"check": "node --check lib/index.js && node --check lib/client.js"
 	},
 	"engines": {
