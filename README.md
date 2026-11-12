@@ -1,9 +1,11 @@
 # @dsh-plugins/pr-badge
 
 A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin:
-every chat in the sidebar that sits on a branch with an open pull request (GitHub)
-or merge request (GitLab) gets the octicon next to its title, colored by the state
-of that request, and clicking the icon opens it in a new tab.
+every chat in the sidebar whose own work has a pull request (GitHub) or merge
+request (GitLab) gets the octicon next to its title, colored by the state of
+that request, and clicking the icon opens it in a new tab. The request is the
+chat's own — its worktree's, the one its title points at, or the one it names —
+never just the branch a shared checkout happens to be left on.
 
 ```
  sidebar                                          colors
@@ -47,6 +49,8 @@ of that request, and clicking the icon opens it in a new tab.
    - a chat's **own words** — the pull request it names, or the tracker id its
      title opens with — name its subject even when it works in a shared
      checkout, where the directory says nothing about the chat;
+   - a **linked worktree** is somebody's isolated checkout, so its branch is
+     trusted as-is;
    - the **primary checkout's branch is the weakest witness**: every chat started
      in that directory reports the same branch, so that branch may only badge a
      chat that *corroborates* the request (the chat names the branch, its
@@ -54,8 +58,6 @@ of that request, and clicking the icon opens it in a new tab.
      request). A brand-new chat with no text of its own corroborates nothing and
      stays clean — the badge never appears merely because the chat was opened in
      a directory whose checkout happens to sit on a PR branch;
-   - a **linked worktree** is somebody's isolated checkout, so its branch is
-     trusted as-is;
    - the repository's own **default branch** (`origin/HEAD`, e.g. `v2/master`) is
      skipped along with the configured integration branches and detached HEADs:
      their requests belong to somebody else. Only an id at the very start of the
