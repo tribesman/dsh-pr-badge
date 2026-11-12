@@ -20,20 +20,23 @@ of that request, and clicking the icon opens it in a new tab.
 ## Behavior
 
 1. **Host half** resolves, once per session, which pull request belongs to that
-   chat, from three sources in strict priority order:
+   chat, from four sources in strict priority order:
 
    | Priority | `source` | How it is read |
    | --- | --- | --- |
    | 1 | `binding` | the chat's own worktree, from `<repo>/.dsh/worktrees/bindings.json` (written by `@dsh-plugins/worktree-launcher`) |
    | 2 | `reference` | the pull request the chat *names* in its opening message — `/code-review pr 335`, `PR 331`, a `…/pull/75` URL |
-   | 3 | `cwd` | the branch the directory the chat sits in happens to be on |
-   | 4 | `task` | *GitLab only*: the merge request whose branch or title carries the tracker id the chat's title opens with (`41468 …` → `v2-41468`, `#41468 …`) |
+   | 3 | `task` | the request whose branch or title carries the tracker id the chat's title opens with (`434 …` → `tk-434` / `#434 …`) — `gh pr list` for GitHub, `glab api …search` for GitLab |
+   | 4 | `cwd` | the branch of the chat's *own* checkout: a linked worktree always, the primary checkout only when the chat corroborates the request |
 
    ```
    branch   ──git rev-parse --show-toplevel / --abbrev-ref HEAD──▶ repository + branch
+   default  ──git symbolic-ref refs/remotes/origin/HEAD──────────▶ the branch nobody owns
+   checkout ──git rev-parse --git-common-dir─────────────────────▶ primary checkout or linked worktree
    remote   ──git config --get-regexp '^remote\..*\.url$'────────▶ host → gh (github) or glab (gitlab)
    binding  ──<repo>/.dsh/worktrees/bindings.json────────────────▶ the chat's own worktree branch
    message  ──titleInput projection checkpoint───────────────────▶ PR named in the opening message
+   index    ──gh pr list --state all --limit 200─────────────────▶ PRs by tracker id (GitHub)
    both     ──gh pr view <branch | number | url> --json …────────▶ PR view (GitHub, cwd = repository top)
    task     ──glab api projects/<path>/merge_requests?search=…──▶ MR view (GitLab)
    ```
@@ -41,19 +44,23 @@ of that request, and clicking the icon opens it in a new tab.
    The priority exists because each source is weaker than the one above it:
 
    - a **worktree binding** is the chat's own isolated checkout: that is its work;
-   - a chat sitting in a **shared checkout** reports the *same* branch for every
-     chat that happens to live there, so a pull request named in the opening
-     message outranks it — the review flows (`/code-review pr <n>`) own no branch
-     of their own, and the title is not a reliable witness either (the review of
-     PR 352 is titled after issue 350);
-   - everything else falls back to the directory's branch, with integration
-     branches and detached HEADs skipped;
-   - on GitLab, a branch that carries no merge request (the usual shape of a
-     throw-away `dsh-…` worktree branch) falls back to the tracker id in the
-     session title: `41468 Ингосстрах: …` finds `!1660` whose branch is
-     `v2-41468` and whose title starts with `#41468`. Only an id at the very
-     start of the title or opening message counts, so a number in prose cannot
-     borrow somebody else's merge request.
+   - a chat's **own words** — the pull request it names, or the tracker id its
+     title opens with — name its subject even when it works in a shared
+     checkout, where the directory says nothing about the chat;
+   - the **primary checkout's branch is the weakest witness**: every chat started
+     in that directory reports the same branch, so that branch may only badge a
+     chat that *corroborates* the request (the chat names the branch, its
+     tracker id is the one the request carries, or it is titled after the
+     request). A brand-new chat with no text of its own corroborates nothing and
+     stays clean — the badge never appears merely because the chat was opened in
+     a directory whose checkout happens to sit on a PR branch;
+   - a **linked worktree** is somebody's isolated checkout, so its branch is
+     trusted as-is;
+   - the repository's own **default branch** (`origin/HEAD`, e.g. `v2/master`) is
+     skipped along with the configured integration branches and detached HEADs:
+     their requests belong to somebody else. Only an id at the very start of the
+     title or opening message counts as a tracker id, so a number in prose cannot
+     borrow somebody else's request.
 
    `gh`/`glab` run with the *repository top* as their working directory, so they
    resolve the session's own repository. The opening message is read from the
@@ -122,18 +129,21 @@ One entry per session whose branch carries a PR:
 ```
 
 `source` names the winning source — `binding` (the chat's own worktree),
-`reference` (the pull request its opening message names), `cwd` (the branch of
-the directory it sits in) or `task` (the GitLab merge request that carries the
-tracker id from the chat title). A reference-sourced badge carries `reference`
+`reference` (the pull request its opening message names), `task` (the request
+that carries the tracker id from the chat title) or `cwd` (the branch of the
+chat's own checkout — always trusted in a linked worktree, and only with the
+chat's corroboration in the primary checkout). A reference-sourced badge carries `reference`
 as `#<n>`, a task-sourced one carries `task` as the tracker id, and both leave
 `branch`/`worktree` null. `reason` is a stable code
 (`open`, `merged`, `closed`, `conflicts`, `changes-requested`, `checks-failing`,
 `draft`); the browser half owns the tooltip wording. With `debug: true` each
 session also gets a diagnostic row with the `cwd` it resolved, its
 repository/branch/source/forge, the opening message it read, and why it produced
-no badge (`no-cwd`, `not-a-repository`, `base-branch`, `detached-head`,
-`no-pr`, `no-remote`, `gh-error`, `gh-missing`, `glab-error`, `glab-missing`,
-`bad-json`, `unknown-state`).
+no badge (`no-cwd`, `not-a-repository`, `base-branch`, `detached-head`, `no-pr`,
+`no-remote`, `ambient-branch`, `gh-error`, `gh-missing`, `glab-error`,
+`glab-missing`, `bad-json`, `unknown-state`).
+`ambient-branch` is the shared-checkout case: the branch carries a request, but
+the chat never corroborates it, so the badge is withheld.
 
 Every route is loopback-only behind a Host allowlist (`localhost` / `127.0.0.1`
 / `::1`) and takes **no parameters**: paths and command arguments come from
@@ -154,6 +164,7 @@ the forge CLIs' rate limits:
 | PR state while `OPEN` | 60 s |
 | PR state once merged/closed | 10 min |
 | "no PR on this branch" | 2 min |
+| repository PR index (GitHub tracker ids) | 2 min |
 | failures (`gh`/`glab` missing, network, bad JSON) | 30 s |
 
 Concurrent `git`/`gh`/`glab` processes are capped (default 3); sessions sharing one
@@ -205,7 +216,7 @@ Row config is optional; every field has a default.
 | `absentTtlMs` / `errorTtlMs` | 2 min / 30 s | negative and failure cache |
 | `maxConcurrency` | 3 | concurrent `git`/`gh`/`glab` processes |
 | `maxSessions` | 200 | sessions considered per feed pass |
-| `skipBranches` | `main`, `master`, `develop`, `trunk`, `development` | branches never badged |
+| `skipBranches` | `main`, `master`, `develop`, `trunk`, `development` | integration branches never badged; the repository's own `origin/HEAD` branch is always added |
 
 ## How it is wired
 

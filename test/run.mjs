@@ -146,7 +146,130 @@ const GH_ANSWERS = {
 		exit: 1,
 		stderr: "Could not resolve to a PullRequest with the number of 999.",
 	},
+	// Tracker-id lookups: the PR a chat's title names, by number.
+	"435": {
+		exit: 0,
+		json: {
+			number: 435,
+			url: "https://github.com/tribesman/hlrd/pull/435",
+			state: "MERGED",
+			isDraft: false,
+			reviewDecision: "",
+			mergeable: "UNKNOWN",
+			mergeStateStatus: "UNKNOWN",
+			statusCheckRollup: [],
+			title: "#434 API регистра товаров: движения и остаток на дату",
+			headRefName: "tk-434",
+		},
+	},
+	"447": {
+		exit: 0,
+		json: {
+			number: 447,
+			url: "https://github.com/tribesman/hlrd/pull/447",
+			state: "OPEN",
+			isDraft: false,
+			reviewDecision: "REVIEW_REQUIRED",
+			mergeable: "MERGEABLE",
+			mergeStateStatus: "CLEAN",
+			statusCheckRollup: [],
+			title: "#430 Rate limit и защита от флуда публичных эндпоинтов",
+			headRefName: "tk-430",
+		},
+	},
+	"900": {
+		exit: 0,
+		json: {
+			number: 900,
+			url: "https://github.com/tribesman/ambient/pull/900",
+			state: "OPEN",
+			isDraft: false,
+			reviewDecision: "",
+			mergeable: "MERGEABLE",
+			mergeStateStatus: "CLEAN",
+			statusCheckRollup: [],
+			title: "Ambient feature work",
+			headRefName: "feat-ambient",
+		},
+	},
+	"feat-ambient": {
+		exit: 0,
+		json: {
+			number: 900,
+			url: "https://github.com/tribesman/ambient/pull/900",
+			state: "OPEN",
+			isDraft: false,
+			reviewDecision: "",
+			mergeable: "MERGEABLE",
+			mergeStateStatus: "CLEAN",
+			statusCheckRollup: [],
+			title: "Ambient feature work",
+			headRefName: "feat-ambient",
+		},
+	},
+	"tk-430": {
+		exit: 0,
+		json: {
+			number: 447,
+			url: "https://github.com/tribesman/hlrd/pull/447",
+			state: "OPEN",
+			isDraft: false,
+			reviewDecision: "REVIEW_REQUIRED",
+			mergeable: "MERGEABLE",
+			mergeStateStatus: "CLEAN",
+			statusCheckRollup: [],
+			title: "#430 Rate limit и защита от флуда публичных эндпоинтов",
+			headRefName: "tk-430",
+		},
+	},
+	// A repository's default branch: the badge answer must never be consumed.
+	"v2/master": {
+		exit: 0,
+		json: {
+			number: 1054,
+			url: "https://github.com/tribesman/hlrd/pull/1054",
+			state: "MERGED",
+			isDraft: false,
+			reviewDecision: "",
+			mergeable: "UNKNOWN",
+			mergeStateStatus: "UNKNOWN",
+			statusCheckRollup: [],
+			title: "Старый общий мерж",
+			headRefName: "v2/master",
+		},
+	},
 };
+
+/** The repository's pull-request index, as `gh pr list --json` reports it. */
+const GH_PR_INDEX = [
+	{
+		number: 435,
+		title: "#434 API регистра товаров: движения и остаток на дату",
+		headRefName: "tk-434",
+		state: "MERGED",
+		url: "https://github.com/tribesman/hlrd/pull/435",
+		isDraft: false,
+		updatedAt: "2026-10-01T10:00:00Z",
+	},
+	{
+		number: 447,
+		title: "#430 Rate limit и защита от флуда публичных эндпоинтов",
+		headRefName: "tk-430",
+		state: "OPEN",
+		url: "https://github.com/tribesman/hlrd/pull/447",
+		isDraft: false,
+		updatedAt: "2026-11-02T10:00:00Z",
+	},
+	{
+		number: 900,
+		title: "Ambient feature work",
+		headRefName: "feat-ambient",
+		state: "OPEN",
+		url: "https://github.com/tribesman/ambient/pull/900",
+		isDraft: false,
+		updatedAt: "2026-11-03T10:00:00Z",
+	},
+];
 
 function writeGhStub(dir) {
 	const path = join(dir, "gh-stub.sh");
@@ -160,7 +283,7 @@ function writeGhStub(dir) {
 		.join("\n");
 	writeFileSync(
 		path,
-		`#!/usr/bin/env bash\n# argv: pr view <branch> --json <fields>\nbranch="$3"\ncase "$branch" in\n${cases}\n\t*) printf '%s\\n' "unexpected branch: $branch" >&2; exit 9 ;;\nesac\n`,
+		`#!/usr/bin/env bash\n# argv: pr view <selector> --json <fields> | pr list --state all ...\nif [ "$2" = "list" ]; then printf '%s' '${JSON.stringify(GH_PR_INDEX)}'; exit 0; fi\nbranch="$3"\ncase "$branch" in\n${cases}\n\t*) printf '%s\\n' "unexpected branch: $branch" >&2; exit 9 ;;\nesac\n`,
 		"utf8",
 	);
 	chmodSync(path, 0o755);
@@ -1244,6 +1367,117 @@ await test("a failing glab is reported, never badged", async () => {
 	const { payload } = await call(controller, { url: "/pr-badge/api/states?debug=1" });
 	assert.deepEqual(payload.entries, []);
 	assert.equal(payload.diagnostics[0].reason, "glab-error");
+	controller.shutdown();
+});
+
+/** A standalone repository (and primary checkout) under the fixture scratch dir. */
+async function makeRepo(name, branch = "main") {
+	const repo = join(scratch, name);
+	git(["init", "-q", `--initial-branch=${branch}`, repo], scratch);
+	git(["config", "user.email", "prb@test.local"], repo);
+	git(["config", "user.name", "prb-test"], repo);
+	writeFileSync(join(repo, "README.md"), `# ${name}\n`, "utf8");
+	git(["add", "."], repo);
+	git(["commit", "-q", "-m", "seed"], repo);
+	return repo;
+}
+
+await test("the repository's own default branch is never badged", async () => {
+	const repo = await makeRepo("default-branch", "v2/master");
+	// A repository whose default branch is v2/master, the GitLab-shaped layout:
+	// `origin/HEAD` names it even though the configured skip list does not.
+	git(["update-ref", "refs/remotes/origin/v2/master", "HEAD"], repo);
+	git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/v2/master"], repo);
+	const subprocess = makeSubprocess(ghStubPath, log);
+	const controller = createPrBadge({
+		spawn: subprocess.spawn,
+		resolveExecutable: subprocess.resolveExecutable,
+		listSessions: async () => [
+			{ sessionId: "session-default-branch", cwd: repo, title: "Проверка отправки писем" },
+		],
+		debug: true,
+	});
+	const before = log.length;
+	const { payload } = await call(controller, { url: "/pr-badge/api/states?debug=1" });
+	assert.equal(payload.entries.length, 0, "the default branch yields no badge");
+	assert.equal(payload.diagnostics[0].reason, "base-branch");
+	assert.equal(payload.diagnostics[0].branch, "v2/master");
+	assert.equal(ghCalls(log.slice(before)).length, 0, "the default branch never reaches gh");
+	controller.shutdown();
+});
+
+await test("a shared checkout does not lend its branch to an unrelated chat", async () => {
+	const repo = await makeRepo("ambient-branch", "main");
+	git(["checkout", "-q", "-b", "feat-ambient"], repo);
+	const subprocess = makeSubprocess(ghStubPath, log);
+	const controller = createPrBadge({
+		spawn: subprocess.spawn,
+		resolveExecutable: subprocess.resolveExecutable,
+		listSessions: async () => [
+			{ sessionId: "session-ambient-stranger", cwd: repo, title: "Вход в meetup по имени через env" },
+			{ sessionId: "session-ambient-new", cwd: repo },
+			{ sessionId: "session-ambient-owner", cwd: repo, title: "Ambient feature work" },
+		],
+		debug: true,
+	});
+	const { payload } = await call(controller, { url: "/pr-badge/api/states?debug=1" });
+	const bySession = new Map(payload.entries.map((entry) => [entry.sessionId, entry]));
+	const diagnostics = new Map(payload.diagnostics.map((row) => [row.sessionId, row]));
+
+	// A chat titled after the request keeps its badge, from the branch alone.
+	assert.equal(bySession.get("session-ambient-owner").number, 900);
+	assert.equal(bySession.get("session-ambient-owner").source, "cwd");
+	// An unrelated chat on the same branch stays clean…
+	assert.equal(bySession.has("session-ambient-stranger"), false);
+	assert.equal(diagnostics.get("session-ambient-stranger").reason, "ambient-branch");
+	// …and so does a brand-new chat with no text of its own.
+	assert.equal(bySession.has("session-ambient-new"), false);
+	assert.equal(diagnostics.get("session-ambient-new").reason, "ambient-branch");
+	controller.shutdown();
+});
+
+await test("a chat is badged with the PR its tracker id names, not its checkout's branch", async () => {
+	const repo = await makeRepo("tracker-id", "main");
+	git(["checkout", "-q", "-b", "tk-430"], repo);
+	const subprocess = makeSubprocess(ghStubPath, log);
+	const controller = createPrBadge({
+		spawn: subprocess.spawn,
+		resolveExecutable: subprocess.resolveExecutable,
+		listSessions: async () => [
+			{
+				sessionId: "session-task-434",
+				cwd: repo,
+				title: "434 API регистра товаров: движения и остаток на дату",
+			},
+			{
+				sessionId: "session-task-430",
+				cwd: repo,
+				title: "430 Rate limit и защита от флуда публичных эндпоинтов",
+			},
+			{ sessionId: "session-task-999", cwd: repo, title: "999 Нет такой задачи" },
+		],
+		debug: true,
+	});
+	const before = log.length;
+	const { payload } = await call(controller, { url: "/pr-badge/api/states?debug=1" });
+	const bySession = new Map(payload.entries.map((entry) => [entry.sessionId, entry]));
+	const diagnostics = new Map(payload.diagnostics.map((row) => [row.sessionId, row]));
+
+	// The checkout sits on tk-430 (PR 447); a chat about 434 must still get 435.
+	assert.equal(bySession.get("session-task-434").number, 435);
+	assert.equal(bySession.get("session-task-434").source, "task");
+	assert.equal(bySession.get("session-task-434").state, "MERGED");
+	assert.equal(bySession.get("session-task-434").task, 434);
+	assert.equal(bySession.get("session-task-430").number, 447);
+	assert.equal(bySession.get("session-task-430").source, "task");
+	// A chat whose tracker id matches nothing never borrows the branch's PR.
+	assert.equal(bySession.has("session-task-999"), false);
+	assert.equal(diagnostics.get("session-task-999").reason, "ambient-branch");
+
+	// One PR index for the whole repository, not one search per chat.
+	const lists = ghCalls(log.slice(before)).filter((entry) => entry.args[1] === "list");
+	assert.equal(lists.length, 1, "the repository index is fetched once");
+	assert.deepEqual(lists[0].args.slice(2, 6), ["--state", "all", "--limit", "200"]);
 	controller.shutdown();
 });
 

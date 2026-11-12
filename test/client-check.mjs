@@ -168,7 +168,7 @@ assert.doesNotThrow(() => {
 }, "factory must materialize without touching the network");
 assert.equal(typeof face.apply, "function", "exports must expose apply");
 assert.deepEqual([...face.inject], ["slots"], "plugin declares exactly the slots service");
-for (const name of ["scanRows", "normalizeTitle", "sessionIdOfRow", "titleSpanOf", "tooltipFor"]) {
+for (const name of ["scanRows", "titleIndex", "normalizeTitle", "sessionIdOfRow", "titleSpanOf", "tooltipFor"]) {
 	assert.equal(typeof face[name], "function", `${name} must be exported for tests`);
 }
 
@@ -326,6 +326,22 @@ assert.equal(
 	undefined,
 	"an unrelated slot id is never read as a session id",
 );
+
+// ---- title index ----------------------------------------------------------
+
+const duplicateTitleEntry = { ...draftEntry, sessionId: "session-titled-2" };
+const index = face.titleIndex([draftEntry, duplicateTitleEntry, mergedEntry]);
+assert.equal(
+	index.has(face.normalizeTitle(draftEntry.title)),
+	false,
+	"a title two chats share is not an identity",
+);
+assert.equal(
+	index.get(face.normalizeTitle(mergedEntry.title))?.sessionId,
+	"session-fiber-1",
+	"an unambiguous title still matches",
+);
+assert.equal(face.titleIndex([{ ...mergedEntry, title: "   " }]).size, 0, "blank titles never match");
 
 // ---- scanning -------------------------------------------------------------
 
