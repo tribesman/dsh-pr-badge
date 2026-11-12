@@ -229,8 +229,9 @@ knowing:
 - **Row identity.** Rows carry no session id in the DOM, so the plugin walks the
   row element's React fiber chain up to the component whose props hold the
   session node and reads its `node.id`. If that ever stops working the plugin
-  falls back to normalized title matching; if *that* fails too, the row simply
-  keeps no badge — the shell is never broken.
+  falls back to normalized title matching — but only for titles no other chat
+  shares, because a shared title is not an identity. If neither resolves, the
+  row simply keeps no badge; the shell is never broken.
 - **Ownership.** The plugin only ever inserts and removes its own `<a>` nodes;
   it never rewrites React-managed children, and unmounting restores the stock
   shell exactly.
