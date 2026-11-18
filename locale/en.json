@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Pull-request badge",
+    "description": "Paints the pull-request octicon beside the title of every sidebar chat whose own work has a pull or merge request, colored by that request's state — green open, orange blocked, purple merged, grey closed. Clicking the icon opens the request in a new tab. Needs the gh (GitHub) or glab (GitLab) CLI, authenticated for the repositories the chats work in."
+  }
+}

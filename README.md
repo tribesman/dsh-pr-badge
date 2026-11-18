@@ -175,6 +175,12 @@ share one in-flight feed.
 
 ## Install
 
+This package declares a DSH bundle layer (`dsh.bundle` + `cordis.patch.yml`)
+beside its display metadata (`locale/`, `icon.svg`), so **Plugins** →
+**Add plugin**, `plugin_manager`, or `dsh plugin add` install it as a profile
+bundle straight from this repository or from a local checkout; the module code
+under `lib/` is the plugin itself and is unchanged. The manual route remains:
+
 ```bash
 git clone https://github.com/tribesman/dsh-pr-badge.git
 ln -s "$PWD/dsh-pr-badge" ~/.dsh/profiles/<profile>/node_modules/@dsh-plugins/pr-badge
@@ -183,7 +189,8 @@ ln -s "$PWD/dsh-pr-badge" ~/.dsh/profiles/<profile>/node_modules/@dsh-plugins/pr
 (or install it as a package: `dsh plugin --profile <profile> add
 "git+https://github.com/tribesman/dsh-pr-badge.git"`)
 
-then add a Loader row to the profile patch:
+The bundle patch inserts the Loader row for you. The manual symlink route above
+needs that row added to the profile patch by hand:
 
 ```yaml
 insert:
